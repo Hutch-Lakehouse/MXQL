@@ -1,5 +1,51 @@
 # OVERVIEW OF MXQL
-
+```
+hutch-ml-dsl/
+├── src/
+│   ├── core/
+│   │   ├── mxql_parser.py             # ✓ Complete
+│   │   ├── mxql_transformer.py        # ✓ Complete (full implementation)
+│   │   ├── mxql_transpiler.py         # ✓ Complete (with framework support)
+│   │   └── grammar.lark               # ✓ Complete (original spec)
+│   │
+│   ├── execution/
+│   │   ├── execution_engine.py        # ✓ Partial (needs model versioning)
+│   │   └── view_manager.py            # ✓ Basic (needs dependency tracking)
+│   │
+│   ├── integration/
+│   │   ├── jupyter_integration.py     # ✓ Basic (needs rich widget support)
+│   │   └── sql_editor_plugin/         # ∅ Not started
+│   │       └── extension.js
+│   │
+│   └── storage/
+│       ├── model_repository.py        # ∅ Not started
+│       └── view_registry.py           # ∅ Not started
+│
+├── database/
+│   ├── init_schemas.sql               # ✓ Basic (needs full DDL)
+│   └── migrations/                    # ∅ Not started
+│
+├── examples/
+│   ├── basic_classification.ipynb     # ✓ Complete
+│   ├── rl_training.ipynb              # ∅ Not started
+│   └── feature_store_demo.ipynb       # ∅ Not started
+│
+├── tests/
+│   ├── test_parser.py                 # ✓ Basic (needs full coverage)
+│   ├── test_transpiler.py             # ∅ Not started
+│   └── test_execution.py              # ∅ Not started
+│
+├── docs/
+│   ├── language_spec.md               # ∅ Not started
+│   └── api_reference.md               # ∅ Not started
+│
+├── config/
+│   ├── logging.yaml                   # ∅ Not started
+│   └── security_policies.yaml         # ∅ Not started
+│
+├── requirements.txt                   # ✓ Partial
+└── setup.py                           # ∅ Not started
+```
 ## MXQL allows you to:
 - Train models on data from SQL tables.
 - Make predictions, classify data, or cluster data using trained models.
