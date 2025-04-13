@@ -3,6 +3,9 @@
 MXQL allows you to:
 Train models on data from *SQL* tables.
 
+![image](https://github.com/user-attachments/assets/986c4c21-a9df-4bb9-854a-de2f8146361f)
+
+
 Make predictions, classify data, or cluster data using trained models.
 Persist results as ML views in the SQL database.
 Handle preprocessing, hyperparameters, and data integration seamlessly.
