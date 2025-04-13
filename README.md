@@ -6,7 +6,7 @@
 - Persist results as ML views in the SQL database.
 - Handle preprocessing, hyperparameters, and data integration seamlessly.
 - 
-### It’s designed to feel familiar to SQL users, with easy natural language keywords like CREATE MODEL, TRAIN ON, PREDICT, CLASSIFY, and CLUSTER. 
+### It’s designed to feel familiar to SQL users, with easy natural language keywords like CREATE MODEL, TRAIN ON, PREDICT, CLASSIFY,FINE-TUNE and CLUSTER. 
 
 You typically write these statements in a SQL editor, and a transpiler converts them into Python code that runs in a background notebook using libraries like scikit-learn. The results are stored back in your SQL database as persistent ML views, which you can query just like regular SQL views.If you use a federated  Engine like Hutch, you can be able to connect to any datasource you have and access all that data within your sql editor without need to move data to a certain central location.
 
@@ -39,6 +39,24 @@ HYPERPARAMETERS {n_estimators: 100, max_depth: 5}
 PREPROCESS WITH {normalize: true, encode: 'onehot'};
 ```
 
+
+Below is an example when you need to specify columns or join a few tables as the training data
+```
+CREATE MODEL model_name
+USING algorithm = 'deep_learning_model'
+TRAIN ON (SELECT * FROM table_name)
+PREDICT target_column
+[HYPERPARAMETERS {key: value, ...}]
+PREPROCESS WITH {normalize: true, encode: 'onehot'};
+```
+You can replace tablename with a sql script like this:
+```
+TRAIN ON (SELECT a.*, b.feature 
+          FROM table_a a 
+          LEFT JOIN table_b b ON a.id = b.id 
+          GROUP BY a.id 
+          HAVING COUNT(b.id) > 1)
+```
 ### How does it work?
 The SQL editor sends this statement to the transpiler.
 ![image](https://github.com/user-attachments/assets/986c4c21-a9df-4bb9-854a-de2f8146361f)
@@ -143,7 +161,35 @@ The second statement:
 - Fetches data from sales_data.
 - Assigns cluster IDs to each row and creates the customer_segments ML view with a segment column.
 - Query it with: SELECT * FROM customer_segments.
-  
+
+## Fine-Tuning Models
+
+```
+-- Create and train a deep learning model
+CREATE MODEL dl_model
+USING algorithm = 'deep_learning_model'
+TRAIN ON (SELECT a.*, b.feature 
+          FROM training_data a 
+          LEFT JOIN features b ON a.id = b.id 
+          GROUP BY a.id 
+          HAVING COUNT(b.id) > 0)
+PREDICT target
+HYPERPARAMETERS {learning_rate: 0.001, epochs: 50};
+
+-- Fine-tune the model
+FINE-TUNE dl_model
+ON (SELECT a.*, b.feature 
+    FROM new_data a 
+    LEFT JOIN features b ON a.id = b.id)
+WITH HYPERPARAMETERS {learning_rate: 0.0001};
+
+-- Make predictions and persist as a view
+CREATE ML_VIEW predictions_view AS
+SELECT *, PREDICT(dl_model) AS predicted_target
+FROM (SELECT a.*, b.feature 
+      FROM test_data a 
+      LEFT JOIN features b ON a.id = b.id);
+```
 # Integration with SQL Editor and Transpiler
 
 Here’s how the process works end-to-end:
