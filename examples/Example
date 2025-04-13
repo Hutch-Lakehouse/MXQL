@@ -1,0 +1,15 @@
+-- Train a classifier
+CREATE MODEL rf_classifier
+USING algorithm = 'random_forest'
+TRAIN ON customer_data
+PREDICT churn
+WITH FEATURES age, income, tenure
+HYPERPARAMETERS {n_estimators: 100};
+
+-- Predict on new data
+CREATE ML_VIEW churn_predictions AS
+SELECT *, PREDICT(rf_classifier) AS predicted_churn
+FROM new_customers;
+
+-- Query the results
+SELECT * FROM churn_predictions WHERE predicted_churn = 1;
