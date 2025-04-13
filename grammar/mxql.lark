@@ -1,8 +1,9 @@
 // MXQL Grammar Definition
-// This grammar defines the syntax for Machine Learning SQL extensions
+// Extended for Statistics, ML, DL, RL, and LLMs with AutoML Support
 
 start: statement+
 
+// Expanded statement types
 statement: create_model_stmt
          | create_ml_view_stmt
          | drop_model_stmt
@@ -16,41 +17,65 @@ statement: create_model_stmt
          | explain_model_stmt
          | create_pipeline_stmt
          | create_feature_store_stmt
+         | create_environment_stmt      // New: RL environment creation
+         | create_agent_stmt            // New: RL agent creation
+         | train_agent_stmt             // New: RL agent training
+         | evaluate_agent_stmt          // New: RL agent evaluation
 
-// CREATE MODEL statement
+// CREATE MODEL statement with task types and AutoML
 create_model_stmt: "CREATE" "MODEL" model_name
-                  "USING" "algorithm" "=" string_value
+                  "FOR" task_type
+                  automl_flag?
+                  ("USING" "MODEL" "=" string_value)?  // Optional model specification
                   train_clause
-                  predict_clause?
+                  predict_clause?                      // Optional based on task
                   with_features_clause?
                   hyperparameters_clause?
                   preprocess_clause?
                   validation_clause?
                   ";"
 
-// TRAIN ON clause
-train_clause: "TRAIN" "ON" table_name
-            | "TRAIN" "ON" "(" query ")"
+// Task types covering ML, DL, RL, and LLMs
+task_type: "CLASSIFICATION"          // Supervised: predict categorical labels
+         | "REGRESSION"              // Supervised: predict continuous values
+         | "CLUSTERING"              // Unsupervised: group data
+         | "LANGUAGE_MODELING"       // LLMs: unsupervised text prediction
+         | "GENERATION"              // LLMs: text/image generation
+         | "REINFORCEMENT"           // RL: sequential decision-making
+         | "STATISTICAL_ANALYSIS"    // Stats: descriptive/inferential stats
+         | "ANOMALY_DETECTION"       // Unsupervised: detect outliers
+         | "RECOMMENDATION"          // Collaborative filtering or content-based
 
-// PREDICT clause
+// AutoML flag: triggers defaults for unspecified fields
+automl_flag: "AUTOML"
+
+// Flexible TRAIN ON clause
+train_clause: "TRAIN" "ON" table_name ("WITH" "TEXT" column_name)?  // For text-based tasks
+            | "TRAIN" "ON" "(" query ")" ("WITH" "TEXT" column_name)?
+            | "TRAIN" "ON" table_name "PREDICT" column_name         // For supervised tasks
+
+// PREDICT clause (optional for generative or unsupervised tasks)
 predict_clause: "PREDICT" column_name
 
-// WITH FEATURES clause
-with_features_clause: "WITH" "FEATURES" column_list
+// Enhanced WITH FEATURES clause with type and transformation
+with_features_clause: "WITH" "FEATURES" feature_spec ("," feature_spec)*
+feature_spec: column_name ("AS" feature_type)? ("TRANSFORM" json_object)?
+feature_type: "NUMERIC" | "CATEGORICAL" | "TEXT" | "IMAGE" | "AUDIO" | "TIME_SERIES"
 
-// HYPERPARAMETERS clause
+// HYPERPARAMETERS clause supporting tuning ranges
 hyperparameters_clause: "HYPERPARAMETERS" json_object
+// Example: {"learning_rate": {"type": "float", "min": 1e-5, "max": 1e-2}, "batch_size": [16, 32]}
 
-// PREPROCESS clause
+// PREPROCESS clause for data preparation
 preprocess_clause: "PREPROCESS" "WITH" json_object
+// Example: {"tokenizer": "bert-base-uncased", "resize": [224, 224]}
 
-// VALIDATION clause
+// VALIDATION clause (unchanged but critical for ML)
 validation_clause: "VALIDATION" (validation_split | validation_table)
-
 validation_split: "SPLIT" NUMBER
 validation_table: "TABLE" table_name "WITH" "FEATURES" column_list ("PREDICT" column_name)?
 
-// CREATE ML_VIEW statement
+// CREATE ML_VIEW statement with expanded functions
 create_ml_view_stmt: "CREATE" "ML_VIEW" view_name "AS"
                     "SELECT" select_items
                     "FROM" table_name
@@ -60,71 +85,97 @@ create_ml_view_stmt: "CREATE" "ML_VIEW" view_name "AS"
 select_items: select_item ("," select_item)*
 select_item: "*" | column_name | ml_function "AS" column_name
 
-ml_function: predict_function | classify_function | cluster_function | embedding_function | explain_function
+// Expanded ML functions
+ml_function: predict_function
+           | classify_function
+           | cluster_function
+           | embedding_function
+           | explain_function
+           | generate_text_function    // New: LLM text generation
+           | generate_image_function   // New: Image generation
+           | statistical_function      // New: Statistical computations
 
-predict_function: "PREDICT" "(" model_name ("," json_object)? ")"
-classify_function: "CLASSIFY" "(" model_name ("," json_object)? ")"
-cluster_function: "CLUSTER" "(" model_name ("," json_object)? ")"
-embedding_function: "EMBEDDING" "(" model_name ("," json_object)? ")"
-explain_function: "EXPLAIN" "(" model_name ("," json_object)? ")"
+predict_function: "PREDICT" "(" model_name "," column_list ("," json_object)? ")"
+classify_function: "CLASSIFY" "(" model_name "," column_list ("," json_object)? ")"
+cluster_function: "CLUSTER" "(" model_name "," column_list ("," json_object)? ")"
+embedding_function: "EMBED" "(" model_name "," column_name ("," json_object)? ")"  // Returns vector
+explain_function: "EXPLAIN" "(" model_name "," column_list ("," json_object)? ")"
+generate_text_function: "GENERATE_TEXT" "(" model_name "," column_name ("," json_object)? ")"
+// Example: GENERATE_TEXT(my_llm, prompt_col, {"max_length": 50})
+generate_image_function: "GENERATE_IMAGE" "(" model_name "," column_name ("," json_object)? ")"
+statistical_function: "STAT" "(" stat_type "," column_name ")"  // e.g., STAT("MEAN", col1)
+stat_type: "MEAN" | "MEDIAN" | "STDDEV" | "CORRELATION" | "P_VALUE"
 
+// WHERE clause (unchanged)
 where_clause: "WHERE" condition
 
-// DROP MODEL statement
+// DROP statements (unchanged)
 drop_model_stmt: "DROP" "MODEL" model_name ";"
-
-// DROP ML_VIEW statement
 drop_ml_view_stmt: "DROP" "ML_VIEW" view_name ";"
 
-// LIST MODELS statement
+// LIST and INFO statements (unchanged)
 list_models_stmt: "LIST" "MODELS" ";"
-
-// MODEL INFO statement
 model_info_stmt: "SHOW" "MODEL" "INFO" model_name ";"
 
-// EXPORT MODEL statement
+// EXPORT and IMPORT statements (unchanged)
 export_model_stmt: "EXPORT" "MODEL" model_name "TO" string_value ";"
+import_model_stmt: "IMPORT" "MODEL" model_name "FROM" string_value ("WITH" "FEATURES" column_list)? ";"
 
-// IMPORT MODEL statement
-import_model_stmt: "IMPORT" "MODEL" model_name "FROM" string_value 
-                  ("WITH" "FEATURES" column_list)? ";"
-
-// EVALUATE MODEL statement
-evaluate_model_stmt: "EVALUATE" "MODEL" model_name 
+// EVALUATE MODEL statement with flexible metrics
+evaluate_model_stmt: "EVALUATE" "MODEL" model_name
                     "ON" (table_name | "(" query ")")
                     ("WITH" "METRICS" string_list)? ";"
+// Metrics: "accuracy", "perplexity", "BLEU", etc.
 
-// FINE TUNE MODEL statement
-fine_tune_model_stmt: "FINE" "TUNE" "MODEL" model_name 
+// FINE TUNE MODEL statement (unchanged but supports LLMs)
+fine_tune_model_stmt: "FINE" "TUNE" "MODEL" model_name
                      "FROM" base_model_name
                      "USING" "data" "=" table_name
                      ("WITH" "PARAMETERS" json_object)? ";"
 
-// EXPLAIN MODEL statement
+// EXPLAIN MODEL statement (unchanged but extensible)
 explain_model_stmt: "EXPLAIN" "MODEL" model_name
                    ("FOR" "INSTANCE" "(" column_values ")")?
-                   ("USING" "method" "=" string_value)?
-                   ";"
+                   ("USING" "method" "=" string_value)? ";"
 
-// CREATE PIPELINE statement
+// CREATE PIPELINE statement (unchanged)
 create_pipeline_stmt: "CREATE" "PIPELINE" pipeline_name
                      "STEPS" "(" pipeline_steps ")"
                      ";"
-
 pipeline_steps: pipeline_step ("," pipeline_step)*
 pipeline_step: "(" step_number "," step_type "," step_parameters ")"
 
-// CREATE FEATURE STORE statement
+// CREATE FEATURE STORE statement (unchanged)
 create_feature_store_stmt: "CREATE" "FEATURE" "STORE" feature_store_name
                           "FROM" table_name
                           "KEYS" "(" column_list ")"
                           "FEATURES" "(" feature_definitions ")"
                           ";"
-
 feature_definitions: feature_definition ("," feature_definition)*
 feature_definition: feature_name "=" expression
 
-// Basic elements
+// New: Reinforcement Learning statements
+create_environment_stmt: "CREATE" "ENVIRONMENT" env_name
+                        "TYPE" string_value  // e.g., "GYM", "CUSTOM"
+                        ("WITH" "PARAMETERS" json_object)? ";"
+// Example: CREATE ENVIRONMENT cartpole TYPE "GYM" WITH PARAMETERS {"name": "CartPole-v1"};
+
+create_agent_stmt: "CREATE" "AGENT" agent_name
+                  "FOR" "ENVIRONMENT" env_name
+                  "USING" "MODEL" string_value  // e.g., "DQN", "PPO"
+                  ("WITH" "HYPERPARAMETERS" json_object)? ";"
+
+train_agent_stmt: "TRAIN" "AGENT" agent_name
+                 ("EPISODES" NUMBER)?
+                 ("MAX_STEPS" NUMBER)?
+                 ("WITH" "PARAMETERS" json_object)? ";"
+
+evaluate_agent_stmt: "EVALUATE" "AGENT" agent_name
+                    "ON" "ENVIRONMENT" env_name
+                    ("WITH" "METRICS" string_list)? ";"
+// Metrics: "average_reward", "success_rate"
+
+// Basic elements (mostly unchanged)
 model_name: IDENTIFIER
 view_name: IDENTIFIER
 table_name: IDENTIFIER
@@ -134,17 +185,19 @@ pipeline_name: IDENTIFIER
 feature_store_name: IDENTIFIER
 feature_name: IDENTIFIER
 base_model_name: IDENTIFIER
+env_name: IDENTIFIER
+agent_name: IDENTIFIER
 step_number: NUMBER
 step_type: STRING
 step_parameters: json_object
-expression: STRING  // Simplified for now
+expression: STRING
 string_list: string_value ("," string_value)*
-condition: STRING  // Simplified for now
+condition: STRING
 column_values: column_value ("," column_value)*
 column_value: STRING | NUMBER | "NULL"
-query: STRING  // Simplified for now, represents a SQL query
+query: STRING
 
-// JSON-like object definition
+// JSON-like object definition (unchanged but supports nested structures)
 json_object: "{" [pair ("," pair)*] "}"
 pair: string_value ":" value
 value: string_value | number_value | boolean_value | json_object | json_array | "null"
@@ -155,7 +208,7 @@ boolean_value: "true" | "false"
 
 // Terminals
 IDENTIFIER: /[a-zA-Z_][a-zA-Z0-9_]*/
-STRING: /"[^"]*"/ | /'[^']*'/
+STRING: /"[^"]"/ | /'[^']'/
 NUMBER: /\d+(\.\d+)?/
 
 // Ignore whitespace and comments
