@@ -23,10 +23,10 @@ statement: create_model_stmt
          | evaluate_agent_stmt          // New: RL agent evaluation
 
 // CREATE MODEL statement with task types and AutoML
-create_model_stmt: "CREATE" "MODEL" model_name
-                  "FOR" task_type
+create_model_stmt: CREATE MODEL model_name
+                  FOR task_type
                   automl_flag?
-                  ("USING" "MODEL" "=" string_value)?  // Optional model specification
+                  (USING MODEL "=" string_value)?  // Optional model specification
                   train_clause
                   predict_clause?                      // Optional based on task
                   with_features_clause?
@@ -36,54 +36,54 @@ create_model_stmt: "CREATE" "MODEL" model_name
                   ";"
 
 // Task types covering ML, DL, RL, and LLMs
-task_type: "CLASSIFICATION"          // Supervised: predict categorical labels
-         | "REGRESSION"              // Supervised: predict continuous values
-         | "CLUSTERING"              // Unsupervised: group data
-         | "LANGUAGE_MODELING"       // LLMs: unsupervised text prediction
-         | "GENERATION"              // LLMs: text/image generation
-         | "REINFORCEMENT"           // RL: sequential decision-making
-         | "STATISTICAL_ANALYSIS"    // Stats: descriptive/inferential stats
-         | "ANOMALY_DETECTION"       // Unsupervised: detect outliers
-         | "RECOMMENDATION"          // Collaborative filtering or content-based
+task_type: CLASSIFICATION          // Supervised: predict categorical labels
+         | REGRESSION              // Supervised: predict continuous values
+         | CLUSTERING              // Unsupervised: group data
+         | LANGUAGE_MODELING       // LLMs: unsupervised text prediction
+         | GENERATION              // LLMs: text/image generation
+         | REINFORCEMENT           // RL: sequential decision-making
+         | STATISTICAL_ANALYSIS    // Stats: descriptive/inferential stats
+         | ANOMALY_DETECTION       // Unsupervised: detect outliers
+         | RECOMMENDATION          // Collaborative filtering or content-based
 
 // AutoML flag: triggers defaults for unspecified fields
-automl_flag: "AUTOML"
+automl_flag: AUTOML
 
 // Flexible TRAIN ON clause
-train_clause: "TRAIN" "ON" table_name ("WITH" "TEXT" column_name)?  // For text-based tasks
-            | "TRAIN" "ON" "(" query ")" ("WITH" "TEXT" column_name)?
-            | "TRAIN" "ON" table_name "PREDICT" column_name         // For supervised tasks
+train_clause: TRAIN ON table_name (WITH TEXT column_name)?  // For text-based tasks
+            | TRAIN ON "(" query ")" (WITH TEXT column_name)?
+            | TRAIN ON table_name PREDICT column_name         // For supervised tasks
 
 // PREDICT clause (optional for generative or unsupervised tasks)
-predict_clause: "PREDICT" column_name
+predict_clause: PREDICT column_name
 
 // Enhanced WITH FEATURES clause with type and transformation
-with_features_clause: "WITH" "FEATURES" feature_spec ("," feature_spec)*
-feature_spec: column_name ("AS" feature_type)? ("TRANSFORM" json_object)?
-feature_type: "NUMERIC" | "CATEGORICAL" | "TEXT" | "IMAGE" | "AUDIO" | "TIME_SERIES"
+with_features_clause: WITH FEATURES feature_spec ("," feature_spec)*
+feature_spec: column_name (AS feature_type)? (TRANSFORM json_object)?
+feature_type: NUMERIC | CATEGORICAL | TEXT | IMAGE | AUDIO | TIME_SERIES
 
 // HYPERPARAMETERS clause supporting tuning ranges
-hyperparameters_clause: "HYPERPARAMETERS" json_object
+hyperparameters_clause: HYPERPARAMETERS json_object
 // Example: {"learning_rate": {"type": "float", "min": 1e-5, "max": 1e-2}, "batch_size": [16, 32]}
 
 // PREPROCESS clause for data preparation
-preprocess_clause: "PREPROCESS" "WITH" json_object
+preprocess_clause: PREPROCESS WITH json_object
 // Example: {"tokenizer": "bert-base-uncased", "resize": [224, 224]}
 
 // VALIDATION clause (unchanged but critical for ML)
-validation_clause: "VALIDATION" (validation_split | validation_table)
-validation_split: "SPLIT" NUMBER
-validation_table: "TABLE" table_name "WITH" "FEATURES" column_list ("PREDICT" column_name)?
+validation_clause: VALIDATION (validation_split | validation_table)
+validation_split: SPLIT NUMBER
+validation_table: TABLE table_name WITH FEATURES column_list (PREDICT column_name)?
 
 // CREATE ML_VIEW statement with expanded functions
-create_ml_view_stmt: "CREATE" "ML_VIEW" view_name "AS"
-                    "SELECT" select_items
-                    "FROM" table_name
+create_ml_view_stmt: CREATE ML_VIEW view_name AS
+                    SELECT select_items
+                    FROM table_name
                     where_clause?
                     ";"
 
 select_items: select_item ("," select_item)*
-select_item: "*" | column_name | ml_function "AS" column_name
+select_item: "*" | column_name | ml_function AS column_name
 
 // Expanded ML functions
 ml_function: predict_function
@@ -95,84 +95,84 @@ ml_function: predict_function
            | generate_image_function   // New: Image generation
            | statistical_function      // New: Statistical computations
 
-predict_function: "PREDICT" "(" model_name "," column_list ("," json_object)? ")"
-classify_function: "CLASSIFY" "(" model_name "," column_list ("," json_object)? ")"
-cluster_function: "CLUSTER" "(" model_name "," column_list ("," json_object)? ")"
-embedding_function: "EMBED" "(" model_name "," column_name ("," json_object)? ")"  // Returns vector
-explain_function: "EXPLAIN" "(" model_name "," column_list ("," json_object)? ")"
-generate_text_function: "GENERATE_TEXT" "(" model_name "," column_name ("," json_object)? ")"
+predict_function: PREDICT "(" model_name "," column_list ("," json_object)? ")"
+classify_function: CLASSIFY "(" model_name "," column_list ("," json_object)? ")"
+cluster_function: CLUSTER "(" model_name "," column_list ("," json_object)? ")"
+embedding_function: EMBED "(" model_name "," column_name ("," json_object)? ")"  // Returns vector
+explain_function: EXPLAIN "(" model_name "," column_list ("," json_object)? ")"
+generate_text_function: GENERATE_TEXT "(" model_name "," column_name ("," json_object)? ")"
 // Example: GENERATE_TEXT(my_llm, prompt_col, {"max_length": 50})
-generate_image_function: "GENERATE_IMAGE" "(" model_name "," column_name ("," json_object)? ")"
-statistical_function: "STAT" "(" stat_type "," column_name ")"  // e.g., STAT("MEAN", col1)
+generate_image_function: GENERATE_IMAGE "(" model_name "," column_name ("," json_object)? ")"
+statistical_function: STAT "(" stat_type "," column_name ")"  // e.g., STAT("MEAN", col1)
 stat_type: "MEAN" | "MEDIAN" | "STDDEV" | "CORRELATION" | "P_VALUE"
 
 // WHERE clause (unchanged)
-where_clause: "WHERE" condition
+where_clause: WHERE condition
 
 // DROP statements (unchanged)
-drop_model_stmt: "DROP" "MODEL" model_name ";"
-drop_ml_view_stmt: "DROP" "ML_VIEW" view_name ";"
+drop_model_stmt: DROP MODEL model_name ";"
+drop_ml_view_stmt: DROP ML_VIEW view_name ";"
 
 // LIST and INFO statements (unchanged)
-list_models_stmt: "LIST" "MODELS" ";"
-model_info_stmt: "SHOW" "MODEL" "INFO" model_name ";"
+list_models_stmt: LIST MODELS ";"
+model_info_stmt: SHOW MODEL INFO model_name ";"
 
 // EXPORT and IMPORT statements (unchanged)
-export_model_stmt: "EXPORT" "MODEL" model_name "TO" string_value ";"
-import_model_stmt: "IMPORT" "MODEL" model_name "FROM" string_value ("WITH" "FEATURES" column_list)? ";"
+export_model_stmt: EXPORT MODEL model_name TO string_value ";"
+import_model_stmt: IMPORT MODEL model_name FROM string_value (WITH FEATURES column_list)? ";"
 
 // EVALUATE MODEL statement with flexible metrics
-evaluate_model_stmt: "EVALUATE" "MODEL" model_name
-                    "ON" (table_name | "(" query ")")
-                    ("WITH" "METRICS" string_list)? ";"
+evaluate_model_stmt: EVALUATE MODEL model_name
+                    ON (table_name | "(" query ")")
+                    (WITH METRICS string_list)? ";"
 // Metrics: "accuracy", "perplexity", "BLEU", etc.
 
 // FINE TUNE MODEL statement (unchanged but supports LLMs)
-fine_tune_model_stmt: "FINE" "TUNE" "MODEL" model_name
-                     "FROM" base_model_name
-                     "USING" "data" "=" table_name
-                     ("WITH" "PARAMETERS" json_object)? ";"
+fine_tune_model_stmt: FINE TUNE MODEL model_name
+                     FROM base_model_name
+                     USING "data" "=" table_name
+                     (WITH PARAMETERS json_object)? ";"
 
 // EXPLAIN MODEL statement (unchanged but extensible)
-explain_model_stmt: "EXPLAIN" "MODEL" model_name
-                   ("FOR" "INSTANCE" "(" column_values ")")?
-                   ("USING" "method" "=" string_value)? ";"
+explain_model_stmt: EXPLAIN MODEL model_name
+                   (FOR INSTANCE "(" column_values ")")?
+                   (USING "method" "=" string_value)? ";"
 
 // CREATE PIPELINE statement (unchanged)
-create_pipeline_stmt: "CREATE" "PIPELINE" pipeline_name
-                     "STEPS" "(" pipeline_steps ")"
+create_pipeline_stmt: CREATE PIPELINE pipeline_name
+                     STEPS "(" pipeline_steps ")"
                      ";"
 pipeline_steps: pipeline_step ("," pipeline_step)*
 pipeline_step: "(" step_number "," step_type "," step_parameters ")"
 
 // CREATE FEATURE STORE statement (unchanged)
-create_feature_store_stmt: "CREATE" "FEATURE" "STORE" feature_store_name
-                          "FROM" table_name
-                          "KEYS" "(" column_list ")"
-                          "FEATURES" "(" feature_definitions ")"
+create_feature_store_stmt: CREATE FEATURE STORE feature_store_name
+                          FROM table_name
+                          KEYS "(" column_list ")"
+                          FEATURES "(" feature_definitions ")"
                           ";"
 feature_definitions: feature_definition ("," feature_definition)*
 feature_definition: feature_name "=" expression
 
 // New: Reinforcement Learning statements
-create_environment_stmt: "CREATE" "ENVIRONMENT" env_name
-                        "TYPE" string_value  // e.g., "GYM", "CUSTOM"
-                        ("WITH" "PARAMETERS" json_object)? ";"
+create_environment_stmt: CREATE ENVIRONMENT env_name
+                        TYPE string_value  // e.g., "GYM", "CUSTOM"
+                        (WITH PARAMETERS json_object)? ";"
 // Example: CREATE ENVIRONMENT cartpole TYPE "GYM" WITH PARAMETERS {"name": "CartPole-v1"};
 
-create_agent_stmt: "CREATE" "AGENT" agent_name
-                  "FOR" "ENVIRONMENT" env_name
-                  "USING" "MODEL" string_value  // e.g., "DQN", "PPO"
-                  ("WITH" "HYPERPARAMETERS" json_object)? ";"
+create_agent_stmt: CREATE AGENT agent_name
+                  FOR ENVIRONMENT env_name
+                  USING MODEL string_value  // e.g., "DQN", "PPO"
+                  (WITH HYPERPARAMETERS json_object)? ";"
 
-train_agent_stmt: "TRAIN" "AGENT" agent_name
-                 ("EPISODES" NUMBER)?
-                 ("MAX_STEPS" NUMBER)?
-                 ("WITH" "PARAMETERS" json_object)? ";"
+train_agent_stmt: TRAIN AGENT agent_name
+                 (EPISODES NUMBER)?
+                 (MAX_STEPS NUMBER)?
+                 (WITH PARAMETERS json_object)? ";"
 
-evaluate_agent_stmt: "EVALUATE" "AGENT" agent_name
-                    "ON" "ENVIRONMENT" env_name
-                    ("WITH" "METRICS" string_list)? ";"
+evaluate_agent_stmt: EVALUATE AGENT agent_name
+                    ON ENVIRONMENT env_name
+                    (WITH METRICS string_list)? ";"
 // Metrics: "average_reward", "success_rate"
 
 // Basic elements (mostly unchanged)
@@ -208,8 +208,82 @@ boolean_value: "true" | "false"
 
 // Terminals
 IDENTIFIER: /[a-zA-Z_][a-zA-Z0-9_]*/
-STRING: /"[^"]"/ | /'[^']'/
+STRING: /"[^"]*"/ | /'[^']*'/
 NUMBER: /\d+(\.\d+)?/
+
+// Keywords - define these as terminals to avoid quoting them in rules
+CREATE: "CREATE"
+MODEL: "MODEL"
+FOR: "FOR"
+USING: "USING"
+TRAIN: "TRAIN"
+ON: "ON"
+WITH: "WITH"
+TEXT: "TEXT"
+PREDICT: "PREDICT"
+AS: "AS"
+FEATURES: "FEATURES"
+HYPERPARAMETERS: "HYPERPARAMETERS"
+PREPROCESS: "PREPROCESS"
+VALIDATION: "VALIDATION"
+SPLIT: "SPLIT"
+TABLE: "TABLE"
+ML_VIEW: "ML_VIEW"
+SELECT: "SELECT"
+FROM: "FROM"
+CLASSIFY: "CLASSIFY"
+CLUSTER: "CLUSTER"
+EMBED: "EMBED"
+EXPLAIN: "EXPLAIN"
+GENERATE_TEXT: "GENERATE_TEXT"
+GENERATE_IMAGE: "GENERATE_IMAGE"
+STAT: "STAT"
+WHERE: "WHERE"
+DROP: "DROP"
+LIST: "LIST"
+MODELS: "MODELS"
+SHOW: "SHOW"
+INFO: "INFO"
+EXPORT: "EXPORT"
+IMPORT: "IMPORT"
+TO: "TO"
+EVALUATE: "EVALUATE"
+METRICS: "METRICS"
+FINE: "FINE"
+TUNE: "TUNE"
+PARAMETERS: "PARAMETERS"
+INSTANCE: "INSTANCE"
+METHOD: "METHOD"
+PIPELINE: "PIPELINE"
+STEPS: "STEPS"
+FEATURE: "FEATURE"
+STORE: "STORE"
+KEYS: "KEYS"
+ENVIRONMENT: "ENVIRONMENT"
+TYPE: "TYPE"
+AGENT: "AGENT"
+EPISODES: "EPISODES"
+MAX_STEPS: "MAX_STEPS"
+TRANSFORM: "TRANSFORM"
+AUTOML: "AUTOML"
+
+// Task type keywords
+CLASSIFICATION: "CLASSIFICATION"
+REGRESSION: "REGRESSION"
+CLUSTERING: "CLUSTERING"
+LANGUAGE_MODELING: "LANGUAGE_MODELING"
+GENERATION: "GENERATION"
+REINFORCEMENT: "REINFORCEMENT"
+STATISTICAL_ANALYSIS: "STATISTICAL_ANALYSIS"
+ANOMALY_DETECTION: "ANOMALY_DETECTION"
+RECOMMENDATION: "RECOMMENDATION"
+
+// Feature type keywords
+NUMERIC: "NUMERIC"
+CATEGORICAL: "CATEGORICAL"
+IMAGE: "IMAGE"
+AUDIO: "AUDIO"
+TIME_SERIES: "TIME_SERIES"
 
 // Ignore whitespace and comments
 COMMENT: /--[^\n]*/
