@@ -24,7 +24,7 @@ statement: create_model_stmt
 
 // CREATE MODEL statement with task types and AutoML
 create_model_stmt: CREATE MODEL model_name
-                  FOR task_type
+                  FOR task_type_value
                   automl_flag?
                   (USING MODEL "=" string_value)?  // Optional model specification
                   train_clause
@@ -36,7 +36,7 @@ create_model_stmt: CREATE MODEL model_name
                   ";"
 
 // Task types covering ML, DL, RL, and LLMs
-task_type: CLASSIFICATION          // Supervised: predict categorical labels
+task_type_value: CLASSIFICATION          // Supervised: predict categorical labels
          | REGRESSION              // Supervised: predict continuous values
          | CLUSTERING              // Unsupervised: group data
          | LANGUAGE_MODELING       // LLMs: unsupervised text prediction
