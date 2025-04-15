@@ -1,364 +1,470 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
-Transformer module for standardizing and enriching parsed data.
-This module handles data transformation operations.
+transformer.py
+
+This file defines MXQLTransformer, a Lark Transformer that traverses the parse tree (produced by mxql.lark)
+and converts each MXQL statement into a structured AST (Abstract Syntax Tree) represented as Python dictionaries.
+
+Each MXQL statement type from the grammar is transformed into a dictionary with a "type" field and other
+related fields that capture the details of the statement.
+
+Supported statement types:
+  - create_experiment_stmt
+  - list_experiments_stmt
+  - experiment_info_stmt
+  - create_model_stmt
+  - create_ml_view_stmt
+  - drop_model_stmt
+  - drop_ml_view_stmt
+  - list_models_stmt
+  - model_info_stmt
+  - export_model_stmt
+  - import_model_stmt
+  - evaluate_model_stmt
+  - fine_tune_model_stmt
+  - explain_model_stmt
+  - compare_models_stmt
+  - tune_model_stmt
+  - deploy_model_stmt
+  - create_pipeline_stmt
+  
+Additional rules (such as feature_spec, json_object, etc.) are also handled.
 """
-from typing import Dict, List, Any, Union, Optional
-import re
-import json
-from datetime import datetime
 
+from lark import Transformer
 
-class Transformer:
-    """Transformer class for standardizing and enriching parsed data"""
-    
-    def __init__(self, config=None):
-        """Initialize the transformer with optional configuration"""
-        self.config = config or {}
-        
-    def transform(self, parsed_data: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Transform parsed data into standardized format
-        
-        Args:
-            parsed_data: The parsed data structure from the Parser
-            
-        Returns:
-            A dictionary with transformed and enriched data
-        """
-        transformed = {
-            'metadata': self._extract_metadata(parsed_data),
-            'content': self._process_content(parsed_data),
-            'relationships': self._identify_relationships(parsed_data),
-            'schema': self._infer_schema(parsed_data),
-            'errors': self._validate_data(parsed_data)
-        }
-        
-        return transformed
-    
-    def _extract_metadata(self, parsed_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Extract and standardize metadata from parsed data"""
-        metadata = {
-            'timestamp': datetime.now().isoformat(),
-            'sections_count': len(parsed_data.get('sections', [])),
-            'lists_count': len(parsed_data.get('lists', [])),
-            'code_blocks_count': len(parsed_data.get('code_blocks', [])),
-            'tables_count': len(parsed_data.get('tables', []))
-        }
-        
-        # Extract title if available from first section
-        sections = parsed_data.get('sections', [])
-        if sections and 'title' in sections[0]:
-            metadata['title'] = sections[0]['title']
-        
-        # Add any explicit metadata from key-values
-        key_values = parsed_data.get('key_values', {})
-        metadata_keys = ['author', 'date', 'version', 'category', 'tags']
-        for key in metadata_keys:
-            if key in key_values:
-                metadata[key] = key_values[key]
-                
-        # Process tags if they exist
-        if 'tags' in metadata and isinstance(metadata['tags'], str):
-            metadata['tags'] = [tag.strip() for tag in metadata['tags'].split(',')]
-            
-        return metadata
-    
-    def _process_content(self, parsed_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Process and standardize content from parsed data"""
-        content = {
-            'main_text': self._extract_main_text(parsed_data),
-            'sections': self._normalize_sections(parsed_data.get('sections', [])),
-            'structured_data': self._structure_data(parsed_data)
-        }
-        
-        return content
-    
-    def _extract_main_text(self, parsed_data: Dict[str, Any]) -> str:
-        """Extract main text content without markup"""
-        sections = parsed_data.get('sections', [])
-        if not sections:
-            return ""
-            
-        main_text = []
-        for section in sections:
-            main_text.append(section.get('title', ''))
-            main_text.append(section.get('content', ''))
-            
-        # Remove code blocks, tables, and other markup
-        text = ' '.join(main_text)
-        text = re.sub(r'```.*?```', '', text, flags=re.DOTALL)
-        text = re.sub(r'\|.*?\|', '', text, flags=re.MULTILINE)
-        text = re.sub(r'^\s*[-*]\s+', '', text, flags=re.MULTILINE)
-        
-        return text.strip()
-    
-    def _normalize_sections(self, sections: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Normalize section structure"""
-        normalized = []
-        
-        for section in sections:
-            normalized_section = {
-                'title': section.get('title', '').strip(),
-                'level': section.get('level', 1),
-                'content': section.get('content', '').strip(),
-                'word_count': len(section.get('content', '').split()),
-                'slug': self._create_slug(section.get('title', ''))
-            }
-            normalized.append(normalized_section)
-            
-        return normalized
-    
-    def _create_slug(self, text: str) -> str:
-        """Create a URL-friendly slug from text"""
-        text = text.lower()
-        text = re.sub(r'[^a-z0-9\s-]', '', text)
-        text = re.sub(r'\s+', '-', text)
-        return text.strip('-')
-    
-    def _structure_data(self, parsed_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Convert parsed data into more structured formats"""
-        structured = {}
-        
-        # Process tables into more accessible formats
-        tables = parsed_data.get('tables', [])
-        if tables:
-            structured['tables'] = {}
-            for i, table in enumerate(tables):
-                headers = table.get('headers', [])
-                rows = table.get('rows', [])
-                
-                table_name = f"table_{i+1}"
-                structured['tables'][table_name] = {
-                    'headers': headers,
-                    'data': rows,
-                    'row_count': len(rows)
-                }
-        
-        # Process code blocks with language detection
-        code_blocks = parsed_data.get('code_blocks', [])
-        if code_blocks:
-            structured['code'] = {}
-            for i, block in enumerate(code_blocks):
-                language = block.get('language', 'text')
-                code = block.get('code', '')
-                
-                block_name = f"code_block_{i+1}"
-                structured['code'][block_name] = {
-                    'language': language,
-                    'content': code,
-                    'line_count': code.count('\n') + 1
-                }
-        
-        return structured
-    
-    def _identify_relationships(self, parsed_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Identify relationships between different elements"""
-        relationships = {
-            'section_hierarchy': self._build_section_hierarchy(parsed_data.get('sections', [])),
-            'references': self._extract_references(parsed_data)
-        }
-        
-        return relationships
-    
-    def _build_section_hierarchy(self, sections: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """Build a hierarchical structure of sections based on their levels"""
-        hierarchy = {}
-        current_path = []
-        
-        for section in sections:
-            level = section.get('level', 1)
-            title = section.get('title', '')
-            
-            # Adjust the current path based on the section level
-            if level <= len(current_path):
-                current_path = current_path[:level-1]
-            
-            current_path.append(title)
-            
-            # Build the nested dictionary structure
-            current = hierarchy
-            for i, path_item in enumerate(current_path):
-                if i == len(current_path) - 1:
-                    current[path_item] = {'content': section.get('content', '')}
-                else:
-                    if path_item not in current:
-                        current[path_item] = {}
-                    current = current[path_item]
-        
-        return hierarchy
-    
-    def _extract_references(self, parsed_data: Dict[str, Any]) -> Dict[str, List[str]]:
-        """Extract references and links from the content"""
-        references = {
-            'urls': [],
-            'cross_references': []
-        }
-        
-        # Extract URLs
-        all_text = self._extract_main_text(parsed_data)
-        url_pattern = re.compile(r'https?://\S+')
-        references['urls'] = url_pattern.findall(all_text)
-        
-        # Extract potential cross-references (like "[Section X]")
-        cross_ref_pattern = re.compile(r'\[(.*?)\]')
-        references['cross_references'] = cross_ref_pattern.findall(all_text)
-        
-        return references
-    
-    def _infer_schema(self, parsed_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Infer schema from structured data elements"""
-        schema = {}
-        
-        # Infer schema from tables
-        tables = parsed_data.get('tables', [])
-        if tables:
-            schema['tables'] = {}
-            for i, table in enumerate(tables):
-                headers = table.get('headers', [])
-                rows = table.get('rows', [])
-                
-                table_name = f"table_{i+1}"
-                field_types = {}
-                
-                # Analyze first few rows to infer types
-                for header in headers:
-                    field_types[header] = self._infer_field_type(rows, header)
-                
-                schema['tables'][table_name] = field_types
-        
-        # Infer schema from key-values
-        key_values = parsed_data.get('key_values', {})
-        if key_values:
-            schema['properties'] = {}
-            for key, value in key_values.items():
-                schema['properties'][key] = self._infer_value_type(value)
-        
-        return schema
-    
-    def _infer_field_type(self, rows: List[Dict[str, str]], field: str) -> str:
-        """Infer the data type of a field based on its values"""
-        if not rows:
-            return 'string'
-            
-        types = []
-        for row in rows[:min(5, len(rows))]:  # Check first 5 rows or fewer
-            if field in row:
-                types.append(self._infer_value_type(row[field]))
-        
-        if not types:
-            return 'string'
-            
-        # Return most common type
-        if all(t == 'integer' for t in types):
-            return 'integer'
-        if all(t in ('integer', 'float') for t in types):
-            return 'float'
-        if all(t == 'boolean' for t in types):
-            return 'boolean'
-        if all(t == 'date' for t in types):
-            return 'date'
-            
-        return 'string'  # Default type
-    
-    def _infer_value_type(self, value: str) -> str:
-        """Infer the data type of a single value"""
-        if not value or not isinstance(value, str):
-            return 'string'
-            
-        # Check for boolean
-        if value.lower() in ('true', 'false', 'yes', 'no'):
-            return 'boolean'
-            
-        # Check for integer
-        try:
-            int(value)
-            return 'integer'
-        except ValueError:
-            pass
-            
-        # Check for float
-        try:
-            float(value)
-            return 'float'
-        except ValueError:
-            pass
-            
-        # Check for date
-        date_patterns = [
-            r'\d{4}-\d{2}-\d{2}',  # YYYY-MM-DD
-            r'\d{2}/\d{2}/\d{4}',  # MM/DD/YYYY
-            r'\d{2}\.\d{2}\.\d{4}'  # DD.MM.YYYY
-        ]
-        
-        for pattern in date_patterns:
-            if re.match(pattern, value):
-                return 'date'
-                
-        return 'string'
-    
-    def _validate_data(self, parsed_data: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Validate parsed data and return any errors or warnings"""
-        errors = []
-        
-        # Check for missing sections
-        if not parsed_data.get('sections'):
-            errors.append({
-                'type': 'warning',
-                'message': 'No sections found in the document',
-                'element': 'sections'
-            })
-        
-        # Validate tables structure
-        tables = parsed_data.get('tables', [])
-        for i, table in enumerate(tables):
-            headers = table.get('headers', [])
-            rows = table.get('rows', [])
-            
-            for j, row in enumerate(rows):
-                for header in headers:
-                    if header not in row:
-                        errors.append({
-                            'type': 'error',
-                            'message': f'Missing data for header "{header}" in table {i+1}, row {j+1}',
-                            'element': f'tables.{i}.rows.{j}.{header}'
-                        })
-                        
-        return errors
+class MXQLTransformer(Transformer):
 
+    # ------------------------------
+    # Generic helper transformations
+    # ------------------------------
+    def __default__(self, data, children, meta):
+        # If a single child exists, return it, otherwise return all children as a list.
+        return children if len(children) > 1 else children[0]
 
-if __name__ == "__main__":
-    # Simple test
-    from parser import Parser
+    def string_value(self, items):
+        s = str(items[0])
+        return s.strip('"\'')
     
-    sample_text = """# Sample Document
+    def NUMBER(self, token):
+        s = str(token)
+        return int(s) if '.' not in s else float(s)
     
-    Author: John Doe
-    Date: 2023-04-15
+    def boolean_value(self, items):
+        return True if items[0] == "true" else False
+
+    # ------------------------------
+    # Statement: CREATE EXPERIMENT
+    # ------------------------------
+    def create_experiment_stmt(self, items):
+        # Expected order:
+        # experiment_name, task_type, (table_name | query), optional predict_clause,
+        # optional with_features_clause, optional preprocess clause, optional session clause.
+        result = {
+            "type": "create_experiment",
+            "experiment_name": str(items[0]),
+            "task_type": str(items[1]),
+            "data_source": str(items[2]),
+            "predict": None,
+            "features": [],
+            "preprocess": None,
+            "session_id": None,
+        }
+        for extra in items[3:]:
+            if isinstance(extra, dict):
+                if extra.get("predict"):
+                    result["predict"] = extra["predict"]
+                if extra.get("features"):
+                    result["features"] = extra["features"]
+                if extra.get("preprocess"):
+                    result["preprocess"] = extra["preprocess"]
+                if extra.get("session_id"):
+                    result["session_id"] = extra["session_id"]
+        return result
+
+    def list_experiments_stmt(self, items):
+        return {"type": "list_experiments"}
     
-    ## Introduction
+    def experiment_info_stmt(self, items):
+        return {
+            "type": "experiment_info",
+            "experiment_name": str(items[0])
+        }
     
-    This is an introduction.
+    # ------------------------------
+    # Statement: CREATE MODEL
+    # ------------------------------
+    def create_model_stmt(self, items):
+        # Order:
+        # model_name, optional ("IN" experiment_name), task_type, optional automl_flag,
+        # train_clause, optional predict_clause, optional with_features_clause, hyperparameters_clause,
+        # validation_clause, optional experiment_tracking_clause.
+        result = {
+            "type": "create_model",
+            "model_name": str(items[0]),
+            "experiment": None,
+            "task_type": None,
+            "automl": False,
+            "train_on": None,
+            "predict": None,
+            "features": [],
+            "hyperparameters": {},
+            "validation": None,
+            "tracking": {}
+        }
+        index = 1
+        # Check for optional experiment reference.
+        if index < len(items) and isinstance(items[index], str) and items[index].startswith("exp_"):
+            result["experiment"] = items[index][4:]  # remove potential prefix
+            index += 1
+        if index < len(items):
+            result["task_type"] = str(items[index])
+            index += 1
+        if index < len(items) and items[index] == "AUTOML":
+            result["automl"] = True
+            index += 1
+        if index < len(items):
+            result["train_on"] = str(items[index])
+            index += 1
+        if index < len(items) and isinstance(items[index], dict) and items[index].get("predict"):
+            result["predict"] = items[index]["predict"]
+            index += 1
+        if index < len(items) and isinstance(items[index], dict) and items[index].get("features") is not None:
+            result["features"] = items[index]["features"]
+            index += 1
+        if index < len(items) and isinstance(items[index], dict) and items[index].get("hyperparameters") is not None:
+            result["hyperparameters"] = items[index]["hyperparameters"]
+            index += 1
+        if index < len(items) and isinstance(items[index], dict) and items[index].get("validation") is not None:
+            result["validation"] = items[index]["validation"]
+            index += 1
+        if index < len(items) and isinstance(items[index], dict) and items[index].get("tracking") is not None:
+            result["tracking"] = items[index]["tracking"]
+            index += 1
+        return result
+
+    def automl_flag(self, items):
+        return "AUTOML"
     
-    ## Data
+    def train_clause(self, items):
+        return str(items[0])
     
-    | Name | Age | Email |
-    |------|-----|-------|
-    | John | 30  | john@example.com |
-    | Jane | 25  | jane@example.com |
+    def predict_clause(self, items):
+        return {"predict": str(items[0])}
     
-    ## Code Example
+    def with_features_clause(self, items):
+        features = []
+        for feat in items:
+            if isinstance(feat, dict):
+                features.append(feat)
+        return {"features": features}
     
-    ```python
-    def hello():
-        print("Hello, world!")
-    ```
-    """
+    def feature_spec(self, items):
+        feat = {"column": str(items[0])}
+        if len(items) > 1:
+            feat["type"] = str(items[1])
+        else:
+            feat["type"] = None
+        return feat
     
-    parser = Parser()
-    parsed_data = parser.parse(sample_text)
+    def feature_type(self, items):
+        return str(items[0])
     
-    transformer = Transformer()
-    transformed_data = transformer.transform(parsed_data)
+    def hyperparameters_clause(self, items):
+        return {"hyperparameters": items[0]}
     
-    print(json.dumps(transformed_data, indent=2))
+    def validation_clause(self, items):
+        return {"validation": items[0]}
+    
+    def experiment_tracking_clause(self, items):
+        return {"tracking": items[0]}
+    
+    # ------------------------------
+    # Statement: CREATE ML_VIEW
+    # ------------------------------
+    def create_ml_view_stmt(self, items):
+        # Order:
+        # view_name, select_items, table_name, optional where_clause.
+        result = {
+            "type": "create_ml_view",
+            "view_name": str(items[0]),
+            "select_items": items[1],
+            "table_name": str(items[2]),
+            "where": None
+        }
+        if len(items) > 3:
+            result["where"] = str(items[3])
+        return result
+
+    def select_items(self, items):
+        return items
+
+    def select_item(self, items):
+        # Could be a column, *, or a ml_function.
+        return items[0]  # Simplified pass-through.
+
+    def ml_function(self, items):
+        # Pass-through for functions like PREDICT, CLASSIFY, etc.
+        return {"ml_function": items}
+
+    # ------------------------------
+    # Statement: DROP MODEL
+    # ------------------------------
+    def drop_model_stmt(self, items):
+        return {"type": "drop_model", "model_name": str(items[0])}
+
+    # ------------------------------
+    # Statement: DROP ML_VIEW
+    # ------------------------------
+    def drop_ml_view_stmt(self, items):
+        return {"type": "drop_ml_view", "view_name": str(items[0])}
+
+    # ------------------------------
+    # Statement: LIST MODELS
+    # ------------------------------
+    def list_models_stmt(self, items):
+        result = {"type": "list_models", "experiment": None}
+        if items:
+            # Optional experiment specification
+            result["experiment"] = str(items[0])
+        return result
+
+    # ------------------------------
+    # Statement: MODEL INFO
+    # ------------------------------
+    def model_info_stmt(self, items):
+        return {"type": "model_info", "model_name": str(items[0])}
+
+    # ------------------------------
+    # Statement: EXPORT MODEL
+    # ------------------------------
+    def export_model_stmt(self, items):
+        return {
+            "type": "export_model",
+            "model_name": str(items[0]),
+            "destination": self.string_value(items[1:])
+        }
+
+    # ------------------------------
+    # Statement: IMPORT MODEL
+    # ------------------------------
+    def import_model_stmt(self, items):
+        return {
+            "type": "import_model",
+            "model_name": str(items[0]),
+            "source": self.string_value(items[1:])
+        }
+    
+    # ------------------------------
+    # Statement: EVALUATE MODEL
+    # ------------------------------
+    def evaluate_model_stmt(self, items):
+        result = {
+            "type": "evaluate_model",
+            "model_name": str(items[0]),
+            "on": str(items[1]),
+            "metrics": None
+        }
+        if len(items) > 2 and isinstance(items[2], dict) and items[2].get("metrics"):
+            result["metrics"] = items[2]["metrics"]
+        return result
+
+    def metric_list(self, items):
+        # Return list of string values
+        return [self.string_value([item]) for item in items]
+
+    # ------------------------------
+    # Statement: FINE TUNE MODEL
+    # ------------------------------
+    def fine_tune_model_stmt(self, items):
+        result = {
+            "type": "fine_tune_model",
+            "model_name": str(items[0]),
+            "base_model": str(items[1]),
+            "data": str(items[2]),
+            "parameters": {}
+        }
+        if len(items) > 3 and isinstance(items[3], dict):
+            result["parameters"] = items[3]
+        return result
+
+    # ------------------------------
+    # Statement: EXPLAIN MODEL
+    # ------------------------------
+    def explain_model_stmt(self, items):
+        result = {
+            "type": "explain_model",
+            "model_name": str(items[0]),
+            "instance": None,
+            "using": None
+        }
+        for extra in items[1:]:
+            if isinstance(extra, dict) and extra.get("instance"):
+                result["instance"] = extra["instance"]
+            elif isinstance(extra, dict) and extra.get("using"):
+                result["using"] = extra["using"]
+        return result
+
+    # ------------------------------
+    # Statement: COMPARE MODELS
+    # ------------------------------
+    def compare_models_stmt(self, items):
+        result = {
+            "type": "compare_models",
+            "experiment": str(items[0]),
+            "sort_by": None,
+            "order": None,
+            "top": None,
+            "include": [],
+            "exclude": [],
+            "parameters": {}
+        }
+        for extra in items[1:]:
+            if isinstance(extra, dict):
+                if extra.get("sort_by"):
+                    result["sort_by"] = extra["sort_by"]
+                    result["order"] = extra.get("order")
+                if extra.get("top"):
+                    result["top"] = extra["top"]
+                if extra.get("include"):
+                    result["include"] = extra["include"]
+                if extra.get("exclude"):
+                    result["exclude"] = extra["exclude"]
+                if extra.get("parameters"):
+                    result["parameters"] = extra["parameters"]
+        return result
+
+    # ------------------------------
+    # Statement: TUNE MODEL
+    # ------------------------------
+    def tune_model_stmt(self, items):
+        result = {
+            "type": "tune_model",
+            "model_name": str(items[0]),
+            "experiment": str(items[1]),
+            "tuning_method": None,
+            "parameters": {},
+            "optimize": None,
+            "search_grid": {}
+        }
+        for extra in items[2:]:
+            if isinstance(extra, dict):
+                if extra.get("tuning_method"):
+                    result["tuning_method"] = extra["tuning_method"]
+                elif extra.get("parameters"):
+                    result["parameters"] = extra["parameters"]
+                elif extra.get("optimize"):
+                    result["optimize"] = extra["optimize"]
+                elif extra.get("search_grid"):
+                    result["search_grid"] = extra["search_grid"]
+        return result
+
+    # ------------------------------
+    # Statement: DEPLOY MODEL
+    # ------------------------------
+    def deploy_model_stmt(self, items):
+        result = {
+            "type": "deploy_model",
+            "model_name": str(items[0]),
+            "deployment_target": str(items[1]),
+            "parameters": {}
+        }
+        if len(items) > 2 and isinstance(items[2], dict):
+            result["parameters"] = items[2].get("parameters", {})
+        return result
+
+    # ------------------------------
+    # Statement: CREATE PIPELINE
+    # ------------------------------
+    def create_pipeline_stmt(self, items):
+        result = {
+            "type": "create_pipeline",
+            "pipeline_name": str(items[0]),
+            "experiment": None,
+            "steps": []
+        }
+        idx = 1
+        if idx < len(items) and isinstance(items[idx], str) and items[idx].startswith("exp_"):
+            result["experiment"] = items[idx][4:]
+            idx += 1
+        result["steps"] = items[idx]
+        return result
+
+    def pipeline_steps(self, items):
+        return items
+
+    def pipeline_step(self, items):
+        return {
+            "step_number": items[0],
+            "step_name": str(items[1]).strip('"'),
+            "parameters": items[2]
+        }
+    
+    # ------------------------------
+    # JSON-like object definition
+    # ------------------------------
+    def json_object(self, items):
+        result = {}
+        for item in items:
+            if isinstance(item, tuple) and len(item) == 2:
+                key, value = item
+                result[key] = value
+            elif isinstance(item, dict):
+                result.update(item)
+        return result
+
+    def pair(self, items):
+        key = self.string_value([items[0]])
+        value = items[1]
+        return (key, value)
+    
+    # ------------------------------
+    # Other basic elements and rules
+    # ------------------------------
+    def table_name(self, items):
+        return str(items[0])
+    
+    def column_name(self, items):
+        return str(items[0])
+    
+    def view_name(self, items):
+        return str(items[0])
+    
+    def model_name(self, items):
+        return str(items[0])
+    
+    def pipeline_name(self, items):
+        return str(items[0])
+    
+    def base_model_name(self, items):
+        return str(items[0])
+    
+    def experiment_name(self, items):
+        return str(items[0])
+    
+    def metric_name(self, items):
+        return str(items[0])
+    
+    def deployment_target(self, items):
+        return str(items[0])
+    
+    def step_number(self, items):
+        return items[0]
+    
+    def condition(self, items):
+        return str(items[0])
+    
+    def column_values(self, items):
+        return items  # list of values
+
+    def query(self, items):
+        return self.string_value(items)
+    
+    def model_list(self, items):
+        return [self.string_value([item]) for item in items]
+    
+    def metric_list(self, items):
+        return [self.string_value([item]) for item in items]
+    
+    def tuning_method(self, items):
+        return self.string_value(items)
