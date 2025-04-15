@@ -1,7 +1,82 @@
 // MXQL Grammar Definition for PyCaret Integration
 // SQL-like language for ML operations stored in databases
-// With experiment tracking support
-%ignore_case
+// With experiorement tracking support
+
+// ===== CASE-INSENSITIVE KEYWORDS =====
+// Core Operations
+CREATE: /[Cc][Rr][Ee][Aa][Tt][Ee]/
+DROP: /[Dd][Rr][Oo][Pp]/
+LIST: /[Ll][Ii][Ss][Tt]/
+SHOW: /[Ss][Hh][Oo][Ww]/
+COMPARE: /[Cc][Oo][Mm][Pp][Aa][Rr][Ee]/
+TUNE: /[Tt][Uu][Nn][Ee]/
+DEPLOY: /[Dd][Ee][Pp][Ll][Oo][Yy]/
+EXPORT: /[Ee][Xx][Pp][Oo][Rr][Tt]/
+IMPORT: /[Ii][Mm][Pp][Oo][Rr][Tt]/
+EVALUATE: /[Ee][Vv][Aa][Ll][Uu][Aa][Tt][Ee]/
+EXPLAIN: /[Ee][Xx][Pp][Ll][Aa][Ii][Nn]/
+FINE: /[Ff][Ii][Nn][Ee]/
+
+// Entities
+MODEL: /[Mm][Oo][Dd][Ee][Ll]/
+EXPERIMENT: /[Ee][Xx][Pp][Ee][Rr][Ii][Mm][Ee][Nn][Tt]/
+ML_VIEW: /[Mm][Ll]_[Vv][Ii][Ee][Ww]/  // Underscore is literal
+PIPELINE: /[Pp][Ii][Pp][Ee][Ll][Ii][Nn][Ee]/
+FEATURES: /[Ff][Ee][Aa][Tt][Uu][Rr][Ee][Ss]/
+PARAMETERS: /[Pp][Aa][Rr][Aa][Mm][Ee][Tt][Ee][Rr][Ss]/
+
+// Clauses
+FOR: /[Ff][Oo][Rr]/
+ON: /[Oo][Nn]/
+PREDICT: /[Pp][Rr][Ee][Dd][Ii][Cc][Tt]/
+WITH: /[Ww][Ii][Tt][Hh]/
+PREPROCESS: /[Pp][Rr][Ee][Pp][Rr][Oo][Cc][Ee][Ss][Ss]/
+SESSION: /[Ss][Ee][Ss][Ss][Ii][Oo][Nn]/
+ID: /[Ii][Dd]/
+INFO: /[Ii][Nn][Ff][Oo]/
+IN: /[Ii][Nn]/
+SORT: /[Ss][Oo][Rr][Tt]/
+BY: /[Bb][Yy]/
+ASC: /[Aa][Ss][Cc]/
+DESC: /[Dd][Ee][Ss][Cc]/
+TOP: /[Tt][Oo][Pp]/
+INCLUDE: /[Ii][Nn][Cc][Ll][Uu][Dd][Ee]/
+EXCLUDE: /[Ee][Xx][Cc][Ll][Uu][Dd][Ee]/
+USING: /[Uu][Ss][Ii][Nn][Gg]/
+OPTIMIZE: /[Oo][Pp][Tt][Ii][Mm][Ii][Zz][Ee]/
+SEARCH: /[Ss][Ee][Aa][Rr][Cc][Hh]/
+GRID: /[Gg][Rr][Ii][Dd]/
+TO: /[Tt][Oo]/
+TRACK: /[Tt][Rr][Aa][Cc][Kk]/
+AUTOML: /[Aa][Uu][Tt][Oo][Mm][Ll]/
+TRAIN: /[Tt][Rr][Aa][Ii][Nn]/
+AS: /[Aa][Ss]/
+
+// Data Types
+NUMERIC: /[Nn][Uu][Mm][Ee][Rr][Ii][Cc]/
+CATEGORICAL: /[Cc][Aa][Tt][Ee][Gg][Oo][Rr][Ii][Cc][Aa][Ll]/
+TEXT: /[Tt][Ee][Xx][Tt]/
+DATE: /[Dd][Aa][Tt][Ee]/
+TIME_SERIES: /[Tt][Ii][Mm][Ee]_[Ss][Ee][Rr][Ii][Ee][Ss]/  // Underscore is literal
+
+// ML Tasks
+CLASSIFICATION: /[Cc][Ll][Aa][Ss][Ss][Ii][Ff][Ii][Cc][Aa][Tt][Ii][Oo][Nn]/
+REGRESSION: /[Rr][Ee][Gg][Rr][Ee][Ss][Ss][Ii][Oo][Nn]/
+CLUSTERING: /[Cc][Ll][Uu][Ss][Tt][Ee][Rr][Ii][Nn][Gg]/
+ANOMALY_DETECTION: /[Aa][Nn][Oo][Mm][Aa][Ll][Yy]_[Dd][Ee][Tt][Ee][Cc][Tt][Ii][Oo][Nn]/ 
+
+// Validation
+VALIDATION: /[Vv][Aa][Ll][Ii][Dd][Aa][Tt][Ii][Oo][Nn]/
+SPLIT: /[Ss][Pp][Ll][Ii][Tt]/
+METHOD: /[Mm][Ee][Tt][Hh][Oo][Dd]/
+
+// Misc
+WHERE: /[Ww][Hh][Ee][Rr][Ee]/
+NULL: /[Nn][Uu][Ll][Ll]/
+TRUE: /[Tt][Rr][Uu][Ee]/
+FALSE: /[Ff][Aa][Ll][Ss][Ee]/
+// =====================================
+
 start: statement+
 
 // Statement types for PyCaret operations
