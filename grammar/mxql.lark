@@ -1,7 +1,7 @@
 // MXQL Grammar Definition for PyCaret Integration
 // SQL-like language for ML operations stored in databases
 // With experiment tracking support
-
+%ignore_case
 start: statement+
 
 // Statement types for PyCaret operations
