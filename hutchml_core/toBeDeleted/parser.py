@@ -5,8 +5,7 @@ parser.py
 This module provides a comprehensive parser for the entire MXQL grammar defined in mxql.lark.
 It leverages the Lark parser and our MXQLTransformer (from transformer.py) to:
   - Parse any valid MXQL script.
-  - Transform the Lark parse tree into a uniform AST (abstract syntax tree) 
-    represented as Python dictionaries.
+  - Transform the Lark parse tree into a uniform AST represented as Python dictionaries.
   
 This parser forms the first step in our flow, feeding the AST into our transpiler (transpiler.py),
 which then produces PyCaret-compatible Python code.
@@ -22,7 +21,7 @@ class MXQLParser:
             raise FileNotFoundError(f"Grammar file '{grammar_file}' not found.")
         with open(grammar_file, 'r') as f:
             grammar = f.read()
-        # Initialize Lark with propagate_positions to help debugging.
+        # Note: The grammar remains unchanged because "IN" is already used for experiment names.
         self.parser = Lark(grammar, start='start', parser='lalr', propagate_positions=True)
         self.transformer = MXQLTransformer()
 
@@ -49,21 +48,3 @@ class MXQLParser:
         """
         tree = self.parse_script(script)
         print(tree.pretty())
-
-# For standalone testing of the parser, you can uncomment the following:
-# if __name__ == "__main__":
-#     sample_script = """
-#     CREATE EXPERIMENT churn_exp
-#     FOR CLASSIFICATION
-#     ON transactions_table
-#     PREDICT churn
-#     WITH FEATURES amount AS NUMERIC, location AS CATEGORICAL
-#     PREPROCESS { "normalize": true, "handle_missing": "mean" }
-#     SESSION ID = "exp_001";
-#     """
-#     parser = MXQLParser()
-#     print("Parse Tree:")
-#     parser.parse_and_print(sample_script)
-#     print("Transformed AST:")
-#     ast = parser.transform_script(sample_script)
-#     print(ast)
