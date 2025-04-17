@@ -1,0 +1,278 @@
+start: statement+
+
+// Statement types for PyCaret operations
+statement: create_model_stmt
+         | create_ml_view_stmt
+         | drop_model_stmt
+         | drop_ml_view_stmt
+         | list_models_stmt
+         | model_info_stmt
+         | export_model_stmt
+         | import_model_stmt
+         | evaluate_model_stmt
+         | fine_tune_model_stmt
+         | explain_model_stmt
+         | create_pipeline_stmt
+         | create_experiment_stmt        // New: Create experiment
+         | list_experiments_stmt // LIST EXPERIMENTS statement
+         | experiment_info_stmt          // New: Get experiment info
+         | compare_models_stmt           // New: Compare models within experiment
+         | tune_model_stmt               // New: Hyperparameter tuning
+         | deploy_model_stmt             // New: Model deployment
+
+// Case-insensitive keywords
+CREATE: "create"i
+DROP: "drop"i
+LIST: "list"i
+SHOW: "show"i
+COMPARE: "compare"i
+TUNE: "tune"i
+DEPLOY: "deploy"i
+EXPORT: "export"i
+IMPORT: "import"i
+EVALUATE: "evaluate"i
+EXPLAIN: "explain"i
+FINE: "fine"i
+MODEL: "model"i
+MODELS: "models"i
+EXPERIMENT: "experiment"i
+EXPERIMENTS: "experiments"i
+ML_VIEW: "ml_view"i
+PIPELINE: "pipeline"i
+FEATURES: "features"i
+PARAMETERS: "parameters"i
+FOR: "for"i
+ON: "on"i
+PREDICT: "predict"i
+WITH: "with"i
+PREPROCESS: "preprocess"i
+SESSION: "session"i
+ID: "id"i
+INFO: "info"i
+IN: "in"i
+SORT: "sort"i
+BY: "by"i
+ASC: "asc"i
+DESC: "desc"i
+TOP: "top"i
+INCLUDE: "include"i
+EXCLUDE: "exclude"i
+USING: "using"i
+OPTIMIZE: "optimize"i
+SEARCH: "search"i
+GRID: "grid"i
+TO: "to"i
+TRACK: "track"i
+AUTOML: "automl"i
+TRAIN: "train"i
+AS: "as"i
+NUMERIC: "numeric"i
+CATEGORICAL: "categorical"i
+TEXT: "text"i
+DATE: "date"i
+TIME_SERIES: "time_series"i
+CLASSIFICATION: "classification"i
+REGRESSION: "regression"i
+CLUSTERING: "clustering"i
+ANOMALY_DETECTION: "anomaly_detection"i
+VALIDATION: "validation"i
+SPLIT: "split"i
+METHOD: "method"i
+WHERE: "where"i
+NULL: "null"i
+TRUE: "true"i
+FALSE: "false"i
+SELECT: "select"i
+FROM: "from"i
+STEPS: "steps"i
+METRICS: "metrics"i
+HYPERPARAMETERS: "hyperparameters"i
+
+// CREATE EXPERIMENT statement
+create_experiment_stmt: CREATE EXPERIMENT experiment_name
+                    | FOR task_type
+                    | ON (table_name | "(" query ")")
+                    | (PREDICT column_name)?
+                    | (WITH FEATURES feature_spec ("," feature_spec)*)?
+                    | (PREPROCESS json_object)?
+                    | (SESSION ID "=" string_value)?
+                    | ";"
+
+// LIST EXPERIMENTS statement
+list_experiments_stmt: LIST EXPERIMENTS ";"
+
+// EXPERIMENT INFO statement
+experiment_info_stmt: SHOW EXPERIMENT INFO experiment_name ";"
+
+// COMPARE MODELS within experiment
+compare_models_stmt: COMPARE MODELS IN experiment_name
+                 | (SORT BY metric_name (ASC | DESC)?)?
+                 | (TOP NUMBER)?
+                 | (INCLUDE model_list)?
+                 | (EXCLUDE model_list)?
+                 | (WITH PARAMETERS json_object)?
+                 | ";"
+
+// TUNE MODEL statement
+tune_model_stmt: TUNE MODEL model_name
+             | IN experiment_name
+             | (USING tuning_method)?
+             | (WITH PARAMETERS json_object)?
+             | (OPTIMIZE metric_name)?
+             | (SEARCH GRID json_object)?
+             | ";"
+
+// DEPLOY MODEL statement
+deploy_model_stmt: DEPLOY MODEL model_name
+              |  TO deployment_target
+              |  (WITH PARAMETERS json_object)?
+              |  ";"
+
+// CREATE MODEL statement - PyCaret compatible with experiment tracking
+create_model_stmt: CREATE MODEL model_name
+               |  (IN experiment_name)?  // Optional experiment reference
+               |  FOR task_type
+               |  automl_flag?
+               |  train_clause
+               |  predict_clause?
+               |  with_features_clause?
+               |  hyperparameters_clause?
+               |  validation_clause?
+               |  experiment_tracking_clause?  // New: Experiment tracking options
+               |  ";"
+
+// Experiment tracking clause
+experiment_tracking_clause: TRACK WITH json_object
+
+// PyCaret supported task types
+task_type: CLASSIFICATION
+         | REGRESSION
+         | CLUSTERING
+         | ANOMALY_DETECTION
+         | TIME_SERIES  // Additional PyCaret task type
+
+// AutoML flag
+automl_flag: AUTOML
+
+// Train clause
+train_clause: TRAIN ON (table_name | "(" query ")")
+
+// Predict clause (target column)
+predict_clause: PREDICT column_name
+
+// WITH FEATURES clause
+with_features_clause: WITH FEATURES feature_spec ("," feature_spec)*
+feature_spec: column_name (AS feature_type)?
+feature_type: NUMERIC | CATEGORICAL | TEXT | DATE | TIME_SERIES
+
+// HYPERPARAMETERS clause
+hyperparameters_clause: HYPERPARAMETERS json_object
+
+// VALIDATION clause
+validation_clause: VALIDATION (validation_split | validation_method)
+validation_split: SPLIT NUMBER
+validation_method: METHOD string_value (WITH PARAMETERS json_object)?
+
+// CREATE ML_VIEW statement
+create_ml_view_stmt: CREATE ML_VIEW view_name AS
+                  | SELECT select_items
+                  | FROM table_name
+                  | where_clause?
+                  | ";"
+
+select_items: select_item ("," select_item)*
+select_item: "*" | column_name | ml_function AS column_name
+
+// ML functions for views
+ml_function: predict_function
+           | classify_function
+           | cluster_function
+           | anomaly_function
+           | forecast_function  // For time series
+
+predict_function: PREDICT "(" model_name ("," column_name)* ("," json_object)? ")"
+classify_function: "CLASSIFY"i "(" model_name ("," column_name)* ("," json_object)? ")"
+cluster_function: "CLUSTER"i "(" model_name ("," column_name)* ("," json_object)? ")"
+anomaly_function: "ANOMALY"i "(" model_name ("," column_name)* ("," json_object)? ")"
+forecast_function: "FORECAST"i "(" model_name "," column_name "," NUMBER ("," json_object)? ")"
+
+// WHERE clause
+where_clause: WHERE condition
+
+// DROP statements
+drop_model_stmt: DROP MODEL model_name ";"
+drop_ml_view_stmt: DROP ML_VIEW view_name ";"
+
+// LIST and INFO statements
+list_models_stmt: LIST MODELS (IN experiment_name)? ";"
+model_info_stmt: SHOW MODEL INFO model_name ";"
+
+// EXPORT and IMPORT statements
+export_model_stmt: EXPORT MODEL model_name TO string_value ";"
+import_model_stmt: IMPORT MODEL model_name FROM "from"i string_value ";"
+
+// EVALUATE MODEL statement
+evaluate_model_stmt: EVALUATE MODEL model_name
+                  |  ON (table_name | "(" query ")")
+                  |  (WITH METRICS metric_list)?
+                  |  ";"
+
+// FINE TUNE MODEL statement
+fine_tune_model_stmt: FINE TUNE MODEL model_name
+                   | FROM base_model_name
+                   | USING "data"i "=" table_name
+                   | (WITH PARAMETERS json_object)?
+                   | ";"
+
+// EXPLAIN MODEL statement
+explain_model_stmt: EXPLAIN MODEL model_name
+                |  (FOR "INSTANCE"i "(" column_values ")")?
+                |  (USING string_value)?  // Method: shap, lime, etc.
+                |  ";"
+
+// CREATE PIPELINE statement
+create_pipeline_stmt: CREATE PIPELINE pipeline_name
+                    | (IN experiment_name)?
+                    | STEPS "(" pipeline_steps ")"
+                    | ";"
+pipeline_steps: pipeline_step ("," pipeline_step)*
+pipeline_step: "(" step_number "," string_value "," json_object ")"
+
+// Basic elements
+model_name: IDENTIFIER
+view_name: IDENTIFIER
+table_name: IDENTIFIER
+column_name: IDENTIFIER
+pipeline_name: IDENTIFIER
+base_model_name: IDENTIFIER
+experiment_name: IDENTIFIER
+metric_name: IDENTIFIER
+deployment_target: IDENTIFIER | string_value
+step_number: NUMBER
+condition: STRING
+column_values: column_value ("," column_value)*
+column_value: STRING | NUMBER | NULL
+query: STRING
+model_list: string_value ("," string_value)*
+metric_list: string_value ("," string_value)*
+tuning_method: string_value
+
+// JSON-like object definition
+json_object: "{" [pair ("," pair)*] "}"
+pair: string_value ":" value
+value: string_value | number_value | boolean_value | json_object | json_array | "null"i
+json_array: "[" [value ("," value)*] "]"
+string_value: STRING
+number_value: NUMBER
+boolean_value: TRUE | FALSE
+
+// Terminals
+IDENTIFIER: /[a-zA-Z_][a-zA-Z0-9_.]+/  // Allow dot notation for database.schema.table
+STRING: /"[^"]*"/ | /'[^']*'/
+NUMBER: /\d+(\.\d+)?/
+
+// Ignore whitespace and comments
+COMMENT: /--[^\n]*/
+%import common.WS
+%ignore WS
+%ignore COMMENT
