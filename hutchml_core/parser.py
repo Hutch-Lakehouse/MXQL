@@ -1,142 +1,125 @@
 from lark import Lark
 
-# Define the Mxql grammar
-GRAMMAR = """
+# Grammar snippet
+mxql_grammar = r"""
 start: statement+
 
-statement: create_model_stmt
-         | train_stmt
-         | predict_stmt
-         | evaluate_stmt
-         | drop_model_stmt
-         | list_models_stmt
+statement: 
+  | create_experiment_stmt
+  | list_experiments_stmt
+  | experiment_info_stmt
+  | create_model_stmt
+  | list_models_stmt
+  | model_info_stmt
+  | drop_model_stmt
+  | deploy_model_stmt
+  | export_model_stmt
+  | import_model_stmt
+  | predict_model_stmt
+  | plot_metrics_stmt
 
-create_model_stmt: "CREATE" "MODEL" model_name "FOR" task_type clause* ";"
+create_experiment_stmt: CREATE EXPERIMENT experiment_name FOR task_type data_clause predict_clause? session_clause? experiment_tracking_clause?
+list_experiments_stmt: LIST EXPERIMENTS
+experiment_info_stmt: SHOW EXPERIMENT INFO experiment_name
+create_model_stmt: CREATE MODEL model_name IN experiment_name automl_flag fine_tune_clause? session_clause?
+list_models_stmt: LIST MODELS IN experiment_name
+model_info_stmt: SHOW MODEL INFO model_name
+drop_model_stmt: DROP MODEL model_name
+deploy_model_stmt: DEPLOY MODEL model_name TO deployment_target
+export_model_stmt: EXPORT MODEL model_name TO string_value
+import_model_stmt: IMPORT MODEL model_name FROM string_value
+predict_model_stmt: PREDICT MODEL model_name ON data_clause predict_store_clause?
+plot_metrics_stmt: PLOT METRICS chart_type FOR target
 
-train_stmt: "TRAIN" "MODEL" model_name "ON" data_source "PREDICT" column_name ";"
+predict_clause: PREDICT column_name
+session_clause: SESSION ID "=" string_value
+fine_tune_clause: FINE TUNE
+predict_store_clause: AS table_name
+data_clause: DATA "=" query
+experiment_tracking_clause: TRACK WITH URI "=" string_value
+automl_flag: AUTOML
 
-predict_stmt: "PREDICT" "USING" "MODEL" model_name "ON" data_source ";"
+chart_type: ROC
+          | RESIDUALS
+          | FEATURE_IMPORTANCE
+          | CONFUSION
 
-evaluate_stmt: "EVALUATE" "MODEL" model_name "ON" data_source ("WITH" "METRICS" metric_list)? ";"
-
-drop_model_stmt: "DROP" "MODEL" model_name ";"
-
-list_models_stmt: "LIST" "MODELS" ";"
-
-clause: using_clause | with_features_clause | hyperparameters_clause | preprocess_clause | validation_clause
-
-using_clause: "USING" string_value+
-
-with_features_clause: "WITH" "FEATURES" column_list
-
-hyperparameters_clause: "HYPERPARAMETERS" json_string
-
-preprocess_clause: "PREPROCESS" "WITH" json_string
-
-validation_clause: "VALIDATION" (validation_split | validation_table)
-
-validation_split: "SPLIT" NUMBER
-
-validation_table: "TABLE" table_name
-
-data_source: table_name | "(" query ")"
+task_type: CLASSIFICATION | REGRESSION | CLUSTERING | ANOMALY_DETECTION | TIME_SERIES
+target: experiment_name | model_name
 
 model_name: IDENTIFIER
-
+experiment_name: IDENTIFIER
 table_name: IDENTIFIER
-
 column_name: IDENTIFIER
-
-column_list: column_name ("," column_name)*
-
+deployment_target: IDENTIFIER | string_value
 query: STRING
-
 string_value: STRING
 
-json_string: STRING
+FEATURE_IMPORTANCE: "feature"i "importance"i
+URI: "uri"i
 
-metric_list: string_value ("," string_value)*
+CREATE: "create"i
+DROP: "drop"i
+LIST: "list"i
+SHOW: "show"i
+DEPLOY: "deploy"i
+EXPORT: "export"i
+IMPORT: "import"i
+PREDICT: "predict"i
+PLOT: "plot"i
+MODEL: "model"i
+MODELS: "models"i
+EXPERIMENT: "experiment"i
+EXPERIMENTS: "experiments"i
+FOR: "for"i
+ON: "on"i
+WITH: "with"i
+SESSION: "session"i
+ID: "id"i
+INFO: "info"i
+IN: "in"i
+TO: "to"i
+TRACK: "track"i
+AUTOML: "automl"i
+AS: "as"i
+CLASSIFICATION: "classification"i
+REGRESSION: "regression"i
+CLUSTERING: "clustering"i
+ANOMALY_DETECTION: "anomaly_detection"i
+TIME_SERIES: "time_series"i
+FINE: "fine"i
+TUNE: "tune"i
+DATA: "data"i
+METRICS: "metrics"i
+CHART: "chart"i
+ROC: "roc"i
+RESIDUALS: "residuals"i
+FEATURE: "feature"i
+IMPORTANCE: "importance"i
+CONFUSION: "confusion"i
+SELECT: "select"i
+FROM: "from"i
 
-task_type: "classification" | "regression" | "clustering" | "language_modeling" | "text_generation" | "image_classification" | "object_detection" | "reinforcement_learning"
-
-IDENTIFIER: /[a-zA-Z_][a-zA-Z0-9_]*/
-
-STRING: /"[^"]"/ | /'[^']'/
-
+IDENTIFIER: /[a-zA-Z_][a-zA-Z0-9_.]+/
+STRING: /"[^"]*"/ | /'[^']*'/
 NUMBER: /\d+(\.\d+)?/
 
-%ignore /\s+/
-
-%ignore /--[^\n]*/
+COMMENT: /--[^\n]*/
+%import common.WS
+%ignore WS
+%ignore COMMENT
 """
 
-class MxqlParser:
-    """A parser for the Mxql language, supporting ML/DL/AI tasks with Scikit-learn, TensorFlow, and PyTorch."""
-    
-    def _init_(self):
-        """Initialize the parser with the Mxql grammar."""
-        self.parser = Lark(GRAMMAR, start='start', parser='earley')
-    
-    def parse(self, code):
-        """
-        Parse Mxql code and return an abstract syntax tree (AST).
-        
-        Args:
-            code (str): The Mxql code to parse.
-        
-        Returns:
-            lark.Tree: The parsed AST.
-        
-        Raises:
-            lark.exceptions.LarkError: If the code has syntax errors.
-        """
-        return self.parser.parse(code)
+# Create the parser using the Earley algorithm
+mxql_parser = Lark(mxql_grammar, parser="earley", maybe_placeholders=True, propagate_positions=True)
 
-# Example usage
-if _name_ == "_main_":
-    parser = MxqlParser()
-    
-    # Example 1: Scikit-learn classification
-    code1 = """
-    CREATE MODEL my_model FOR classification
-        USING "scikit-learn" "LogisticRegression"
-        WITH FEATURES x1, x2
-        HYPERPARAMETERS '{"C": 1.0, "penalty": "l2"}'
-        VALIDATION SPLIT 0.2;
-    TRAIN MODEL my_model ON my_table PREDICT y;
+def parse_mxql(query: str):
     """
-    ast1 = parser.parse(code1)
-    print("Scikit-learn example parsed successfully:")
-    print(ast1.pretty())
-    
-    # Example 2: TensorFlow deep learning
-    code2 = """
-    CREATE MODEL dl_model FOR image_classification
-        USING "tensorflow" "resnet50"
-        HYPERPARAMETERS '{"learning_rate": 0.001, "batch_size": 32}'
-        PREPROCESS WITH '{"image": {"resize": [224, 224]}}';
-    PREDICT USING MODEL dl_model ON ("SELECT images FROM image_data");
+    Parses an MXQL query string and returns the parse tree.
+    Strips excess whitespace and gracefully handles various spacing issues.
     """
-    ast2 = parser.parse(code2)
-    print("TensorFlow example parsed successfully:")
-    print(ast2.pretty())
-    
-    # Example 3: PyTorch language modeling
-    code3 = """
-    CREATE MODEL lm_model FOR language_modeling
-        USING "pytorch" "transformer"
-        HYPERPARAMETERS '{"num_layers": 6, "hidden_size": 512}';
-    EVALUATE MODEL lm_model ON test_data WITH METRICS "perplexity";
-    """
-    ast3 = parser.parse(code3)
-    print("PyTorch example parsed successfully:")
-    print(ast3.pretty())
-    
-    # Example 4: Drop and list models
-    code4 = """
-    DROP MODEL old_model;
-    LIST MODELS;
-    """
-    ast4 = parser.parse(code4)
-    print("Management commands parsed successfully:")
-    print(ast4.pretty())
+    normalized = "\n".join(line.strip() for line in query.strip().splitlines() if line.strip())
+    try:
+        return mxql_parser.parse(normalized)
+    except Exception as e:
+        raise SyntaxError(f"MXQL Parse Error: {e}") from e
