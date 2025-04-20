@@ -1,8 +1,8 @@
 # OVERVIEW OF MXQL
 ```
-hutch-ml-dsl/
-├── src/
-│   ├── core/
+MXQL/
+|
+│__ ├── core/
 │   │   ├── mxql_parser.py             # ✓ Complete
 │   │   ├── mxql_transformer.py        # ✓ Complete (full implementation)
 │   │   ├── mxql_transpiler.py         # ✓ Complete (with framework support)
@@ -13,11 +13,11 @@ hutch-ml-dsl/
 │   │   └── view_manager.py            # ✓ Basic (needs dependency tracking)
 │   │
 │   ├── integration/
-│   │   ├── jupyter_integration.py     # ✓ Basic (needs rich widget support)
-│   │   └── sql_editor_plugin/         # ∅ Not started
-│   │       └── extension.js
-│   │
-│   └── storage/
+│       ├── jupyter_integration.py     # ✓ Basic (needs rich widget support)
+│       └── sql_editor_plugin/         # ∅ Not started
+│           └── extension.js
+│______   
+│       └── storage/
 │       ├── model_repository.py        # ∅ Not started
 │       └── view_registry.py           # ∅ Not started
 │
