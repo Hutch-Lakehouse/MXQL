@@ -1,3 +1,70 @@
+mxql/
+│
+├── grammar/
+│   └── mxql.lark                      # Full DSL grammar
+│
+├── parser/
+│   ├── __init__.py
+│   ├── mxql_parser.py                # Parses DSL into Lark trees
+│   ├── sql_parser.py                 # Parses SQL views using sqlglot
+│
+├── transformer/
+│   ├── __init__.py
+│   └── mxql_transformer.py           # Transforms parse trees to MXQL AST
+│
+├── engine/                           # Runtime Engine Core
+│   ├── __init__.py
+│   ├── mxql_executor.py              # Entry point: executes full MXQL scripts
+│   ├── dispatcher.py                 # Dispatches each statement type to the right runner
+│   ├── runners/
+│   │   ├── __init__.py
+│   │   ├── chain_runner.py           # Executes LangChain chains
+│   │   ├── model_runner.py           # Trains or uses MLflow or PyCaret models
+│   │   ├── view_runner.py            # Builds and materializes MX_VIEWs
+│   │   ├── tool_runner.py            # Registers tools
+│   │   ├── prompt_runner.py          # Registers prompts
+│   │   └── sql_runner.py             # Handles raw SQL snippets
+│   └── context.py                    # Holds execution context (space, lab, experiment, etc.)
+│
+├── database/                         # Postgres Bootstrapping
+│   ├── init_db.py                    # Initializes all PostgreSQL tables
+│   └── ddl/
+│       └── schema.sql                # SQL file with all required table definitions
+│
+├── registry/
+│   ├── prompt_registry.py
+│   ├── tool_registry.py
+│   ├── model_registry.py
+│   └── chain_registry.py
+│
+├── runtime/
+│   ├── artifact_manager.py          # MxqlArtifactManager
+│   ├── experiment_logger.py         # Logs metadata to DB or MLflow
+│   └── postgres_client.py           # For DB connection/querying
+│
+├── compiler/
+│   ├── mxql_to_python.py            # Converts DSL to Python code for preview/debug
+│   └── sqlglot_adapter.py           # Handles sqlglot-based transpilation
+│
+├── cli/
+│   └── mxql_cli.py                  # CLI to compile, run, and debug MXQL
+│
+├── examples/
+│   └── ...
+│
+├── tests/
+│   └── ...
+│
+├── notebooks/                       # Optional: Jupyter-based experimentation
+│
+├── web_ui/                          # Optional: React or Streamlit frontend
+│
+├── .env
+├── docker-compose.yml               # Spins up MXQL + Postgres
+├── requirements.txt
+└── README.md
+
+
 # OVERVIEW OF MXQL
 ```
 MXQL/
